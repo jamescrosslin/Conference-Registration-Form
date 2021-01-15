@@ -3,6 +3,7 @@ const title = document.getElementById("title");
 const otherJobRole = document.getElementById("other-job-role");
 const shirtDesign = document.getElementById("design");
 const shirtColor = document.getElementById("color");
+const activities = document.getElementById("activities");
 
 /**
  * this IIFE provides the beginning page state
@@ -17,6 +18,10 @@ function toggleDisplay(element, condition) {
   element.style.display = condition ? "inherit" : "none";
 }
 
+title.addEventListener("change", () => {
+  toggleDisplay(otherJobRole, title.value === "other");
+});
+
 shirtDesign.addEventListener("change", (e) => {
   shirtColor.removeAttribute("disabled");
   [...shirtColor.children].filter((option) => {
@@ -27,6 +32,11 @@ shirtDesign.addEventListener("change", (e) => {
   })[0].selected = true;
 });
 
-title.addEventListener("change", () => {
-  toggleDisplay(otherJobRole, title.value === "other");
+activities.addEventListener("change", (e) => {
+  const cost = +e.target.getAttribute("data-cost");
+  let activitiesCost = document.getElementById("activities-cost");
+  const total = +activitiesCost.textContent.replace(/\D+(\d+)$/, "$1");
+  activitiesCost.textContent = `Total: $${
+    e.target.checked ? total + cost : total - cost
+  }`;
 });
