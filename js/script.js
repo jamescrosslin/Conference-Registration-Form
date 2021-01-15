@@ -4,6 +4,7 @@ const otherJobRole = document.getElementById("other-job-role");
 const shirtDesign = document.getElementById("design");
 const shirtColor = document.getElementById("color");
 const activities = document.getElementById("activities");
+const paySelect = document.getElementById("payment");
 const ccField = document.getElementById("credit-card");
 
 /**
@@ -13,6 +14,7 @@ const ccField = document.getElementById("credit-card");
   nameInput.focus();
   toggleDisplay(otherJobRole, false);
   shirtColor.setAttribute("disabled", "true");
+  paySelect.removeChild(paySelect.firstElementChild);
   toggleDisplay(ccField.nextElementSibling, false);
   toggleDisplay(ccField.nextElementSibling.nextElementSibling, false);
 })();
