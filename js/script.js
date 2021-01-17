@@ -5,6 +5,7 @@ const shirtDesign = document.getElementById("design");
 const shirtColor = document.getElementById("color");
 const paySelect = document.getElementById("payment");
 const inputs = document.querySelectorAll("input");
+const checkboxes = document.querySelectorAll("input[type='checkbox']");
 
 function getById(id) {
   return document.getElementById(id);
@@ -27,8 +28,6 @@ function validateInput(element) {
     cvv: /^\d{3}$/,
   };
 
-function markValidOrInvalid()
-
   const id = element.id.replace(/^([a-z]+)-?.*$/, "$1");
   if (regex[id]) {
     const isInvalid = showOrHideElement(hint, !regex[id].test(element.value));
@@ -49,18 +48,32 @@ function updateCost(activity) {
 function checkActivitySelection() {
   return showOrHideElement(
     getById("activities-hint"),
-    [...document.querySelectorAll("input[type='checkbox']")].filter(
-      (checkbox) => {
-        return checkbox.checked;
-      }
-    ).length === 0
+    [...checkboxes].filter((checkbox) => {
+      return checkbox.checked;
+    }).length === 0
   );
+}
+
+function updateSchedule(activity) {
+  [...checkboxes]
+    .filter((checkbox) => {
+      return (
+        checkbox.getAttribute("data-day-and-time") ===
+          activity.getAttribute("data-day-and-time") &&
+        checkbox.name !== activity.name
+      );
+    })
+    .forEach((conflict) => {
+      conflict.disabled = !conflict.disabled;
+      conflict.parentElement.classList.toggle("disabled");
+    });
 }
 
 function activityHandler(e) {
   updateCost(e.target);
   // updateSchedule();
   checkActivitySelection();
+  updateSchedule(e.target);
 }
 
 /**
@@ -69,7 +82,7 @@ function activityHandler(e) {
 (() => {
   nameInput.focus();
   showOrHideElement(otherJobRole, false);
-  shirtColor.setAttribute("disabled", "true");
+  shirtColor.disabled = true;
   paySelect.removeChild(paySelect.firstElementChild);
   showOrHideElement(payMethods.paypal, false);
   showOrHideElement(payMethods.bitcoin, false);
@@ -88,7 +101,7 @@ function activityHandler(e) {
    * @description on activity checkbox change, adds or subracts the
    * price of activity from the total
    */
-  document.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+  checkboxes.forEach((input) => {
     const label = input.parentNode;
     input.addEventListener("change", activityHandler);
     input.addEventListener("focus", (e) => label.classList.add("focus"));
@@ -120,7 +133,7 @@ title.addEventListener("change", () => {
  * color selections and auto-selects first available
  */
 shirtDesign.addEventListener("change", (e) => {
-  shirtColor.removeAttribute("disabled");
+  shirtColor.disabled = false;
   const colors = [...shirtColor.children];
   colors.forEach((option) => (option.selected = false));
   colors.filter((option) =>
