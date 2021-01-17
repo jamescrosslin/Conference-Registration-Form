@@ -4,6 +4,7 @@ const otherJobRole = document.getElementById("other-job-role");
 const shirtDesign = document.getElementById("design");
 const shirtColor = document.getElementById("color");
 const paySelect = document.getElementById("payment");
+const inputs = document.querySelectorAll("input");
 
 function getById(id) {
   return document.getElementById(id);
@@ -15,35 +16,70 @@ const payMethods = {
   bitcoin: getById("bitcoin"),
 };
 
-const validate = {
-  "name": (id) => shouldShowElement(getById(`${id}-hint`), true),
-  "email": (id) => shouldShowElement(getById(`${id}-hint`), true),
-  "other": (id) => console.log("Need to do something with this"),
-  "activities": (id) => shouldShowElement(getById(`${id}-hint`), true),
-  "cc": (id) => shouldShowElement(getById(`${id}-hint`), true),
-  "zip": (id) => shouldShowElement(getById(`${id}-hint`), true),
-  "cvv": (id) => shouldShowElement(getById(`${id}-hint`), true),
-};
+function validateInput(element) {
+  const container = element.parentElement;
+  const hint = container.lastElementChild;
+  const regex = {
+    name: /^\w+$/,
+    email: /^[^@]+@[^@.]+\.[a-z]+$/i,
+    cc: /^\d{13,16}$/,
+    zip: /^\d{5}$/,
+    cvv: /^\d{3}$/,
+  };
+
+function markValidOrInvalid()
+
+  const id = element.id.replace(/^([a-z]+)-?.*$/, "$1");
+  if (regex[id]) {
+    const isInvalid = showOrHideElement(hint, !regex[id].test(element.value));
+    container.classList.add(isInvalid ? "not-valid" : "valid");
+    container.classList.remove(isInvalid ? "valid" : "not-valid");
+  }
+}
+
+function updateCost(activity) {
+  const cost = +activity.getAttribute("data-cost");
+  const activitiesCost = getById("activities-cost");
+  const total = +activitiesCost.textContent.replace(/\D+(\d+)$/, "$1");
+  activitiesCost.textContent = `Total: $${
+    activity.checked ? total + cost : total - cost
+  }`;
+}
+
+function checkActivitySelection() {
+  return showOrHideElement(
+    getById("activities-hint"),
+    [...document.querySelectorAll("input[type='checkbox']")].filter(
+      (checkbox) => {
+        return checkbox.checked;
+      }
+    ).length === 0
+  );
+}
+
+function activityHandler(e) {
+  updateCost(e.target);
+  // updateSchedule();
+  checkActivitySelection();
+}
 
 /**
- * @description IIFE alters the beginning page state
+ * @description IIFE sets up the beginning page state
  */
 (() => {
   nameInput.focus();
-  shouldShowElement(otherJobRole, false);
+  showOrHideElement(otherJobRole, false);
   shirtColor.setAttribute("disabled", "true");
   paySelect.removeChild(paySelect.firstElementChild);
-  shouldShowElement(payMethods.paypal, false);
-  shouldShowElement(payMethods.bitcoin, false);
+  showOrHideElement(payMethods.paypal, false);
+  showOrHideElement(payMethods.bitcoin, false);
 
   /**
-   * will create an object containing validations for different fields
+   * @method forEach
+   * @description attaches event listeners to all inputs except the other job role input
    */
-  [...document.querySelectorAll("input")].forEach((input) => {
-    input.addEventListener("keyup", (e) => {
-      const normalizedId = e.target.id.replace(/^([a-z]+)-?.*$/, "$1");
-      validate[normalizedId](normalizedId);
-    });
+  inputs.forEach((input) => {
+    input.addEventListener("keyup", (e) => validateInput(e.target));
   });
 
   /**
@@ -52,15 +88,11 @@ const validate = {
    * @description on activity checkbox change, adds or subracts the
    * price of activity from the total
    */
-  [...document.querySelectorAll('input[type="checkbox"]')].forEach((input) => {
-    input.addEventListener("change", (e) => {
-      const cost = +e.target.getAttribute("data-cost");
-      const activitiesCost = getById("activities-cost");
-      const total = +activitiesCost.textContent.replace(/\D+(\d+)$/, "$1");
-      activitiesCost.textContent = `Total: $${
-        e.target.checked ? total + cost : total - cost
-      }`;
-    });
+  document.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+    const label = input.parentNode;
+    input.addEventListener("change", activityHandler);
+    input.addEventListener("focus", (e) => label.classList.add("focus"));
+    input.addEventListener("blur", (e) => label.classList.remove("focus"));
   });
 })();
 
@@ -72,13 +104,13 @@ const validate = {
  * @description element is displayed if it passes the condition and
  * hidden if it fails the condition
  */
-function shouldShowElement(element, condition) {
+function showOrHideElement(element, condition) {
   element.style.display = condition ? "inherit" : "none";
   return condition;
 }
 
 title.addEventListener("change", () => {
-  shouldShowElement(otherJobRole, title.value === "other");
+  showOrHideElement(otherJobRole, title.value === "other");
   otherJobRole.focus();
 });
 
@@ -92,7 +124,7 @@ shirtDesign.addEventListener("change", (e) => {
   const colors = [...shirtColor.children];
   colors.forEach((option) => (option.selected = false));
   colors.filter((option) =>
-    shouldShowElement(
+    showOrHideElement(
       option,
       option.getAttribute("data-theme") === e.target.value
     )
@@ -101,6 +133,16 @@ shirtDesign.addEventListener("change", (e) => {
 
 paySelect.addEventListener("change", (e) => {
   for (const method of Object.values(payMethods)) {
-    shouldShowElement(method, e.target.value === method.id);
+    showOrHideElement(method, e.target.value === method.id);
   }
 });
+
+function validateForm(e) {
+  checkActivitySelection();
+  inputs.forEach((input) => validateInput(input));
+  document.querySelectorAll(".hint").forEach((hint) => {
+    if (hint.style.display === "inherit") e.preventDefault();
+  });
+}
+
+document.querySelector("form").addEventListener("submit", validateForm);
