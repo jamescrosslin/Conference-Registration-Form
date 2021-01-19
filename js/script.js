@@ -1,39 +1,118 @@
-const nameInput = document.getElementById("name");
-const title = document.getElementById("title");
-const otherJobRole = document.getElementById("other-job-role");
-const shirtDesign = document.getElementById("design");
-const shirtColor = document.getElementById("color");
-const paySelect = document.getElementById("payment");
-const inputs = document.querySelectorAll("input");
-const checkboxes = document.querySelectorAll("input[type='checkbox']");
-
+//SHARED RESOURCES
 function getById(id) {
   return document.getElementById(id);
 }
 
-const payMethods = {
-  ccField: getById("credit-card"),
-  paypal: getById("paypal"),
-  bitcoin: getById("bitcoin"),
+function showOrHideElement(element, condition) {
+  element.style.display = condition ? "inherit" : "none";
+  return condition;
+}
+
+function isValid(element, condition) {
+  return !showOrHideElement(element, condition);
+}
+
+const pattern = {
+  "name": /^[^\d]+$/,
+  "email": /^[^@]+@[^@.]+\.[a-z]+$/i,
+  "cc-num": /^\d{13,16}$/,
+  "zip": /^\d{5}$/,
+  "cvv": /^\d{3}$/,
 };
 
-function validateInput(element) {
+/**
+ * @function validationHandler
+ * @param {element} element
+ * @returns {boolean} indicates if there is an error
+ * @description takes in an element handles stages of testing
+ * that element's value
+ */
+function validationHandler(element) {
+  const id = element.id;
+  const text = element.value;
+  const tip = element.nextElementSibling;
+  const patternTip = tip?.nextElementSibling;
   const container = element.parentElement;
-  const hint = container.lastElementChild;
-  const regex = {
-    name: /^\w+$/,
-    email: /^[^@]+@[^@.]+\.[a-z]+$/i,
-    cc: /^\d{13,16}$/,
-    zip: /^\d{5}$/,
-    cvv: /^\d{3}$/,
-  };
 
-  const id = element.id.replace(/^([a-z]+)-?.*$/, "$1");
-  if (regex[id]) {
-    const isInvalid = showOrHideElement(hint, !regex[id].test(element.value));
-    container.classList.add(isInvalid ? "not-valid" : "valid");
-    container.classList.remove(isInvalid ? "valid" : "not-valid");
+  // we test if the input empty text or is an unselected credit card select element
+  // and activate our standard empty field tool tip
+  let valid = isValid(
+    tip,
+    text === "" ||
+      (id === "exp-month" && text === "Select Date") ||
+      (id === "exp-year" && text === "Select Year")
+  );
+
+  //only certain elements have a pattern to match, so we check here
+  if (patternTip) {
+    showOrHideElement(patternTip, false);
+
+    // if the input is not empty, we test its pattern here
+    if (valid) {
+      valid = isValid(patternTip, !pattern[id].test(text));
+    }
   }
+
+  container.classList.toggle("valid", valid);
+  container.classList.toggle("not-valid", !valid);
+  return valid;
+}
+
+/**
+ * createListener
+ * @param {event} e
+ * @description placing my callback like this allows me give validationHandler
+ * an element as an argument, increasing its modularity in later code
+ */
+function createListener(e) {
+  return validationHandler(e.target);
+}
+
+// BASIC INFO
+
+const info = {
+  name: getById("name"),
+  email: getById("email"),
+  title: getById("title"),
+  other: getById("other-job-role"),
+};
+
+info.email.addEventListener("keyup", createListener);
+info.title.addEventListener("change", () => {
+  showOrHideElement(info.other, title.value === "other");
+  info.other.focus();
+});
+
+// T-SHIRTS
+const shirtColor = getById("color");
+
+function shirtHandler(e) {
+  const colors = [...shirtColor.children];
+
+  shirtColor.disabled = false;
+  colors.forEach((option) => (option.selected = false));
+  colors.filter((option) =>
+    showOrHideElement(
+      option,
+      option.getAttribute("data-theme") === e.target.value
+    )
+  )[0].selected = true;
+}
+
+getById("design").addEventListener("change", shirtHandler);
+
+// ACTIVITIES
+const checkboxes = document.querySelectorAll("input[type='checkbox']");
+
+function checkActivitySelection() {
+  const container = getById("activities").firstElementChild;
+  const valid = !showOrHideElement(
+    getById("activities-hint"),
+    [...checkboxes].every((checkbox) => !checkbox.checked)
+  );
+  container.classList.toggle("valid", valid);
+  container.classList.toggle("not-valid", !valid);
+  return valid;
 }
 
 function updateCost(activity) {
@@ -45,108 +124,40 @@ function updateCost(activity) {
   }`;
 }
 
-function checkActivitySelection() {
-  return showOrHideElement(
-    getById("activities-hint"),
-    [...checkboxes].filter((checkbox) => {
-      return checkbox.checked;
-    }).length === 0
-  );
-}
-
 function updateSchedule(activity) {
-  [...checkboxes]
-    .filter((checkbox) => {
-      return (
-        checkbox.getAttribute("data-day-and-time") ===
-          activity.getAttribute("data-day-and-time") &&
-        checkbox.name !== activity.name
-      );
-    })
-    .forEach((conflict) => {
-      conflict.disabled = !conflict.disabled;
-      conflict.parentElement.classList.toggle("disabled");
-    });
+  [...checkboxes].forEach((checkbox) => {
+    if (
+      checkbox.getAttribute("data-day-and-time") ===
+        activity.getAttribute("data-day-and-time") &&
+      checkbox.name !== activity.name
+    ) {
+      checkbox.disabled = !checkbox.disabled;
+      checkbox.parentElement.classList.toggle("disabled");
+    }
+  });
 }
 
 function activityHandler(e) {
-  updateCost(e.target);
   checkActivitySelection();
+  updateCost(e.target);
   updateSchedule(e.target);
 }
 
-/**
- * @description IIFE sets up the beginning page state
- */
-(() => {
-  nameInput.focus();
-  showOrHideElement(otherJobRole, false);
-  shirtColor.disabled = true;
-  paySelect.removeChild(paySelect.firstElementChild);
-  showOrHideElement(payMethods.paypal, false);
-  showOrHideElement(payMethods.bitcoin, false);
+// PAYMENTS
+const paySelect = getById("payment");
+const payMethods = {
+  creditCard: getById("credit-card"),
+  paypal: getById("paypal"),
+  bitcoin: getById("bitcoin"),
+};
 
-  /**
-   * @method forEach
-   * @description attaches event listeners to all inputs except the other job role input
-   */
-  inputs.forEach((input) => {
-    if (
-      input.id !== "other-job-role" &&
-      (input.type === "text" || input.type === "email")
-    ) {
-      input.addEventListener("keyup", (e) => validateInput(e.target));
-    }
-  });
-
-  /**
-   * @listens checkboxes the only checkboxes exist within the "Register for
-   * Activites" container
-   * @description on activity checkbox change, adds or subracts the
-   * price of activity from the total
-   */
-  checkboxes.forEach((input) => {
-    const label = input.parentNode;
-    input.addEventListener("change", activityHandler);
-    input.addEventListener("focus", (e) => label.classList.add("focus"));
-    input.addEventListener("blur", (e) => label.classList.remove("focus"));
-  });
-})();
-
-/**
- * @function shouldShowElement
- * @param {element} element
- * @param {boolean} condition
- * @returns {boolean} true if the element passes and is shown, false if it fails
- * @description element is displayed if it passes the condition and
- * hidden if it fails the condition
- */
-function showOrHideElement(element, condition) {
-  element.style.display = condition ? "inherit" : "none";
-  return condition;
-}
-
-title.addEventListener("change", () => {
-  showOrHideElement(otherJobRole, title.value === "other");
-  otherJobRole.focus();
-});
-
-/**
- * @listens shirtDesign
- * @description on design selection, displays only applicable
- * color selections and auto-selects first available
- */
-shirtDesign.addEventListener("change", (e) => {
-  shirtColor.disabled = false;
-  const colors = [...shirtColor.children];
-  colors.forEach((option) => (option.selected = false));
-  colors.filter((option) =>
-    showOrHideElement(
-      option,
-      option.getAttribute("data-theme") === e.target.value
-    )
-  )[0].selected = true;
-});
+const ccInputs = {
+  month: getById("exp-month"),
+  year: getById("exp-year"),
+  cardNum: getById("cc-num"),
+  zip: getById("zip"),
+  cvv: getById("cvv"),
+};
 
 paySelect.addEventListener("change", (e) => {
   for (const method of Object.values(payMethods)) {
@@ -154,59 +165,52 @@ paySelect.addEventListener("change", (e) => {
   }
 });
 
-function validateForm(e) {
-  checkActivitySelection();
-  inputs.forEach((input) => validateInput(input));
-  document.querySelectorAll(".hint").forEach((hint) => {
-    if (hint.style.display === "inherit") e.preventDefault();
+// FORM VALIDATION
+function massValidate(e, ...inputs) {
+  inputs.forEach((input) => {
+    if (!validationHandler(input)) e.preventDefault();
   });
+}
+
+function validateForm(e) {
+  if (!checkActivitySelection()) {
+    e.preventDefault();
+  }
+  massValidate(e, info.name, info.email);
+  if (paySelect.value === "credit-card")
+    massValidate(e, ...Object.values(ccInputs));
 }
 
 document.querySelector("form").addEventListener("submit", validateForm);
 
-// // SHARED RESOURCES
-// const inputs = document.querySelectorAll("input");
+// Beginning page state
+info.name.focus();
+info.name.nextElementSibling.insertAdjacentHTML(
+  "afterend",
+  `<span class="hint">Name field cannot contain numbers</span>`
+);
+showOrHideElement(info.other, false);
+shirtColor.disabled = true;
+paySelect.removeChild(paySelect.firstElementChild);
+showOrHideElement(payMethods.paypal, false);
+showOrHideElement(payMethods.bitcoin, false);
 
-// function showOrHideElement(element, condition) {
-//   element.style.display = condition ? "inherit" : "none";
-//   return condition;
-// }
+[info.email, ...Object.values(ccInputs)].forEach((input) => {
+  input.insertAdjacentHTML(
+    "afterend",
+    `<span class="hint">Field cannot be blank</span>`
+  );
+});
 
-// // BASIC INFO
+[info.name, info.email, ...Object.values(ccInputs)].forEach((input) => {
+  input.addEventListener("keyup", createListener);
+  input.addEventListener("blur", createListener);
+  input.addEventListener("change", createListener);
+});
 
-// const nameInput = document.getElementById("name");
-// const title = document.getElementById("title");
-// const otherJobRole = document.getElementById("other-job-role");
-
-// nameInput.addEventListener("");
-
-// // T-SHIRTS
-// const shirtDesign = document.getElementById("design");
-// const shirtColor = document.getElementById("color");
-
-// function shirtHandler(e) {
-//   shirtColor.disabled = false;
-//   const colors = [...shirtColor.children];
-//   colors.forEach((option) => (option.selected = false));
-//   colors.filter((option) =>
-//     showOrHideElement(
-//       option,
-//       option.getAttribute("data-theme") === e.target.value
-//     )
-//   )[0].selected = true;
-// }
-
-// shirtDesign.addEventListener("change", shirtHandler);
-
-// // ACTIVITIES
-// const checkboxes = document.querySelectorAll("input[type='checkbox']");
-
-// checkboxes.forEach((input) => {
-//   const label = input.parentNode;
-//   input.addEventListener("change", activityHandler);
-//   input.addEventListener("focus", (e) => label.classList.add("focus"));
-//   input.addEventListener("blur", (e) => label.classList.remove("focus"));
-// });
-
-// // PAYMENTS
-// const paySelect = document.getElementById("payment");
+checkboxes.forEach((input) => {
+  const label = input.parentNode;
+  input.addEventListener("change", activityHandler);
+  input.addEventListener("focus", (e) => label.classList.add("focus"));
+  input.addEventListener("blur", (e) => label.classList.remove("focus"));
+});
