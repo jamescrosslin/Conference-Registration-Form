@@ -1,3 +1,5 @@
+// Treehouse unit 3 Project - I am going for exceeds and would like a "Needs Work" if I fall short of the expectations
+
 //////////////     SHARED  RESOURCES    /////////////////////////
 function getById(id) {
   return document.getElementById(id);
