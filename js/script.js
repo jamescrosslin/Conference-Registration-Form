@@ -1,5 +1,3 @@
-// Treehouse unit 3 Project - I am going for exceeds and would like a "Needs Work" if I fall short of the expectations
-
 //////////////     SHARED  RESOURCES    /////////////////////////
 function getById(id) {
   return document.getElementById(id);
@@ -60,11 +58,7 @@ function validationHandler(element) {
   if (patternTip) {
     // if the input is not empty, we test its pattern here,
     // otherwise we hide the patternTip to avoid conflicting tool tips
-    if (valid) {
-      valid = isValid(patternTip, !pattern[id].test(text));
-    } else {
-      showOrHideElement(patternTip, false);
-    }
+    valid ? (valid = isValid(patternTip, !pattern[id].test(text))) : showOrHideElement(patternTip, false);
   }
 
   container.classList.toggle("valid", valid);
